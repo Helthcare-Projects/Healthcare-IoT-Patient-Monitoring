@@ -16,6 +16,7 @@ from fpdf import FPDF  # For PDF report generation
 # 🟢 Move this line immediately after imports
 st.set_page_config(page_title="Healthcare IoT Real-Time Dashboard", layout="wide")
 
+
 # 🟢 Initialize global variables
 anomalies = 0
 cumulative_anomalies = 0  # Cumulative count of anomalies
