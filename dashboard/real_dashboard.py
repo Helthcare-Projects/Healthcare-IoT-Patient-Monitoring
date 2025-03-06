@@ -2,7 +2,7 @@
 import os
 os.system('pip install streamlit fpdf xgboost tensorflow joblib pandas')
 
-# Import necessary libraries
+# Import necessary librariesS
 import streamlit as st
 import joblib
 import tensorflow as tf
