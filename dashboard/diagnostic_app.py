@@ -1,9 +1,14 @@
+# Import necessary libraries
 import streamlit as st
-import pandas as pd
 import joblib
 import tensorflow as tf
 import numpy as np
-import traceback  # Import traceback for error logging
+import pandas as pd
+
+# 🟢 Move this line immediately after imports
+st.set_page_config(page_title="Healthcare IoT Patient Monitoring", layout="wide")
+
+# Rest of your code...
 
 # 🟢 Initialize anomalies with a safe default at the very top
 anomalies = 0
