@@ -1,12 +1,14 @@
 # Import necessary libraries
 import streamlit as st
+# 🟢 Move this line immediately after imports
+st.set_page_config(page_title="Healthcare IoT Patient Monitoring", layout="wide")
+
 import joblib
 import tensorflow as tf
 import numpy as np
 import pandas as pd
+import traceback
 
-# 🟢 Move this line immediately after imports
-st.set_page_config(page_title="Healthcare IoT Patient Monitoring", layout="wide")
 
 # Rest of your code...
 
