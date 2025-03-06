@@ -122,6 +122,8 @@ def main():
     st.write('Monitor your health in real-time with AI-driven insights!')
 
 # 🟢 Enhanced PDF Report Generation Function
+import tempfile  # Import tempfile to handle temporary file paths
+
 def generate_pdf_report(importance_df, anomalies, cumulative_anomalies):
     pdf = FPDF()
     pdf.add_page()
@@ -148,6 +150,22 @@ def generate_pdf_report(importance_df, anomalies, cumulative_anomalies):
         pdf.cell(200, 10, txt="Moderate anomalies detected. Review data and model thresholds.", ln=True)
     else:
         pdf.cell(200, 10, txt="Anomaly detection is within normal range.", ln=True)
+
+    # 🟢 Embed Feature Importance Bar Chart in PDF using a Temporary File
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmpfile:
+        chart_path = tmpfile.name
+        importance_df.plot(kind='bar', x='Feature', y='Importance', legend=False, title='Feature Importances')
+        plt.tight_layout()
+        plt.savefig(chart_path)  # Save chart to temporary file
+        plt.close()  # Close the plot to free resources
+        pdf.image(chart_path, x=10, y=100, w=190)  # Embed chart in PDF
+
+    # Save PDF to a temporary file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf:
+        pdf.output(tmp_pdf.name)
+        # Provide download button for the generated PDF
+        st.download_button(label="📥 Download Enhanced PDF Report", data=open(tmp_pdf.name, "rb"), file_name="Healthcare_IoT_Report_Enhanced.pdf")
+
 
     # 🟢 Embed Feature Importance Bar Chart in PDF
     importance_df.plot(kind='bar', x='Feature', y='Importance', legend=False, title='Feature Importances')
