@@ -16,13 +16,18 @@ def main():
     st.title('🏥 Healthcare IoT Patient Monitoring Dashboard')
     
     # Load models
-    try:
-        lstm_model = tf.keras.models.load_model('models/lstm_model.keras')
-        rf_model = joblib.load('models/random_forest_model.pkl')
-        st.success("✅ Models loaded successfully.")
-    except Exception as e:
-        st.error("❌ Error loading models.")
-        st.text(traceback.format_exc())  # Print detailed traceback
+   # Load models
+try:
+    lstm_model = tf.keras.models.load_model('models/lstm_model.keras')
+    rf_model = joblib.load('models/random_forest_model.pkl')
+    st.success("✅ Models loaded successfully.")
+except ModuleNotFoundError as e:
+    st.error("❌ Required module is missing: {}".format(str(e)))
+    st.write("Please update requirements.txt to include missing modules.")
+except Exception as e:
+    st.error("❌ Error loading models.")
+    st.text(traceback.format_exc())  # Print detailed traceback
+
 
     # Load data
     try:
