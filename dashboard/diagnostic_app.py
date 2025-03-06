@@ -20,8 +20,15 @@ def main():
     
     # Load models
     try:
-        # 🟢 Try loading .h5 model instead of .keras
-        lstm_model = tf.keras.models.load_model('models/lstm_model.h5')
+        # 🟢 Register 'mse' as a custom object if needed
+        from tensorflow.keras.losses import MeanSquaredError
+
+        # 🟢 Load LSTM model with custom objects
+        lstm_model = tf.keras.models.load_model(
+            'models/lstm_model.h5',
+            custom_objects={'mse': MeanSquaredError()}
+        )
+        
         rf_model = joblib.load('models/random_forest_model.pkl')
         st.success("✅ Models loaded successfully.")
     except FileNotFoundError as e:
