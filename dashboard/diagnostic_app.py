@@ -65,27 +65,39 @@ def main():
         st.error("❌ Error displaying live charts.")
         st.text(traceback.format_exc())
 
-    # 🟢 Anomaly detection using Random Forest
+    # 🟢 Feature Importance Analysis for Random Forest
+    st.subheader("🔍 Feature Importances for Anomaly Detection")
+    try:
+        feature_importances = rf_model.feature_importances_
+        for feature, importance in zip(['Temperature', 'Heart Rate', 'Pulse', 'BPSYS', 'BPDIA', 'Respiratory Rate', 'Oxygen Saturation', 'PH'], feature_importances):
+            st.write(f"{feature}: {importance:.2f}")
+    except Exception as e:
+        st.error("❌ Error displaying feature importances.")
+        st.text(traceback.format_exc())
+
+    # 🟢 Anomaly detection using Random Forest with increased threshold
     st.subheader('🚨 Anomaly Detection')
     try:
-        preds = rf_model.predict(data[['Temperature', 'Heart Rate', 'Pulse', 'BPSYS', 'BPDIA', 'Respiratory Rate', 'Oxygen Saturation', 'PH']])
-        if isinstance(preds, np.ndarray):
-            anomalies = int(sum(preds > 0.7))  # Apply a threshold of 0.7
-        
+        # Adjust threshold for anomaly detection
+        threshold = 0.95  # Increased threshold to reduce false positives
+        preds_proba = rf_model.predict_proba(data[['Temperature', 'Heart Rate', 'Pulse', 'BPSYS', 'BPDIA', 'Respiratory Rate', 'Oxygen Saturation', 'PH']])[:, 1]
+        preds = (preds_proba > threshold).astype(int)
+        anomalies = int(sum(preds))
+
         # 🟢 Create a time-series chart for anomalies
-        anomaly_series = pd.Series(preds, name='Anomalies').rolling(window=10).mean()
+        anomaly_series = pd.Series(preds_proba, name='Anomaly Probability').rolling(window=10).mean()
         st.line_chart(anomaly_series[:50])  # Show first 50 points with a rolling average
 
         st.metric(label="⚠️ Anomalies Detected", value=anomalies)
         st.progress(min(anomalies / len(data), 1.0))
 
         # 🟢 Enhanced feedback based on anomaly count
-        if anomalies > 1000:
-            st.error("🚨 Extremely high anomalies detected! Immediate investigation required.")
+        if anomalies > 3000:
+            st.error("🚨 Extremely high anomalies detected! Immediate investigation required. Consider reviewing data quality, feature selection, or increasing the threshold.")
+        elif anomalies > 1000:
+            st.warning("⚠ High anomalies detected. Review data, model thresholds, and feature importances.")
         elif anomalies > 500:
-            st.warning("⚠ High anomalies detected. Review data and model thresholds.")
-        elif anomalies > 300:
-            st.warning("⚠ Moderate anomalies detected. Consider reviewing input data.")
+            st.warning("⚠ Moderate anomalies detected. Review data and model thresholds.")
         else:
             st.info("✅ Anomaly detection is within normal range.")
     except Exception as e:
