@@ -1,3 +1,7 @@
+# Install missing libraries if not already installed
+import os
+os.system('pip install matplotlib fpdf')  # Ensure matplotlib and fpdf are installed
+
 # Import necessary libraries
 import streamlit as st
 import joblib
@@ -5,7 +9,7 @@ import tensorflow as tf
 import numpy as np
 import pandas as pd
 import traceback
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt  # Ensure matplotlib is imported successfully
 from sklearn.preprocessing import MinMaxScaler  # Ensure normalization
 from fpdf import FPDF  # For PDF report generation
 
