@@ -26,21 +26,22 @@ def main():
     except ModuleNotFoundError as e:
         st.error("❌ Required module is missing: {}".format(str(e)))
         st.write("Please update requirements.txt to include missing modules.")
+        st.text(traceback.format_exc())  # Print detailed traceback
+        return
     except Exception as e:
         st.error("❌ Error loading models.")
         st.text(traceback.format_exc())  # Print detailed traceback
-        return  # Stop execution if models fail to load
+        return
 
     # Load data
     try:
         data = pd.read_csv('data/cleaned_data.csv')
         st.success("✅ Data loaded successfully.")
-        st.write("🔍 DEBUG: First few rows of data:")
         st.write(data.head())  # Print first few rows for verification
     except Exception as e:
         st.error("❌ Error loading data.")
         st.text(traceback.format_exc())  # Print detailed traceback
-        return  # Stop execution if data fails to load
+        return
 
     # 🟢 Display live charts for vital signs
     st.subheader('📊 Real-Time Vital Signs')
@@ -53,13 +54,17 @@ def main():
     # 🟢 Anomaly detection using Random Forest
     st.subheader('🚨 Anomaly Detection')
     try:
-        anomalies = 0  # Define locally inside the try block
         preds = rf_model.predict(data[['Temperature', 'Heart Rate', 'Pulse', 'BPSYS', 'BPDIA', 'Respiratory Rate', 'Oxygen Saturation', 'PH']])
         if isinstance(preds, np.ndarray):
             anomalies = int(sum(preds))
         st.metric(label="⚠️ Anomalies Detected", value=anomalies)
-        # 🟢 FIX: Pass a value between 0.0 and 1.0 directly
-        st.progress(min(anomalies / len(data), 1.0))
+        st.progress(anomalies / len(data) * 100)
+
+        # 🟢 Additional warnings if anomalies are high
+        if anomalies > 500:
+            st.warning("⚠️ Unusually high anomalies detected. Please check data quality or model thresholds.")
+        else:
+            st.info("✅ Anomaly detection is within normal range.")
     except Exception as e:
         st.error("❌ Error during anomaly detection.")
         st.text(traceback.format_exc())  # Print detailed traceback
