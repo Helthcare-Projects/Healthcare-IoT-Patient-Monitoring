@@ -120,7 +120,6 @@ def main():
         st.success("✅ PDF Report generated successfully!")
 
     st.write('Monitor your health in real-time with AI-driven insights!')
-
 # 🟢 Enhanced PDF Report Generation Function
 import tempfile  # Import tempfile to handle temporary file paths
 
@@ -166,8 +165,6 @@ def generate_pdf_report(importance_df, anomalies, cumulative_anomalies):
         # Provide download button for the generated PDF
         st.download_button(label="📥 Download Enhanced PDF Report", data=open(tmp_pdf.name, "rb"), file_name="Healthcare_IoT_Report_Enhanced.pdf")
 
-
-    # 🟢 Embed Feature Importance Bar Chart in PDF
     importance_df.plot(kind='bar', x='Feature', y='Importance', legend=False, title='Feature Importances')
     plt.tight_layout()
     plt.savefig('/content/feature_importance_chart.png')
