@@ -160,7 +160,7 @@ def generate_pdf_report(importance_df, anomalies, cumulative_anomalies):
         plt.close()  # Close the plot to free resources
         pdf.image(chart_path, x=10, y=100, w=190)  # Embed chart in PDF
 
-    # Save PDF to a temporary file
+    # 🟢 Save PDF to a temporary file
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf:
         pdf.output(tmp_pdf.name)
         # Provide download button for the generated PDF
