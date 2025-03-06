@@ -121,7 +121,7 @@ def main():
 
     st.write('Monitor your health in real-time with AI-driven insights!')
 
-# 🟢 Generate PDF Report Function
+# 🟢 Enhanced PDF Report Generation Function
 def generate_pdf_report(importance_df, anomalies, cumulative_anomalies):
     pdf = FPDF()
     pdf.add_page()
@@ -132,6 +132,33 @@ def generate_pdf_report(importance_df, anomalies, cumulative_anomalies):
     pdf.cell(200, 10, txt=f"Total Anomalies Detected: {anomalies}", ln=True)
     pdf.cell(200, 10, txt=f"Cumulative Anomalies Detected: {cumulative_anomalies}", ln=True)
     pdf.ln(10)
+
+    # Feature importances
+    pdf.cell(200, 10, txt="Feature Importances:", ln=True)
+    for index, row in importance_df.iterrows():
+        pdf.cell(200, 10, txt=f"{row['Feature']}: {row['Importance']:.2f}", ln=True)
+
+    pdf.ln(10)
+    pdf.cell(200, 10, txt="Key Observations:", ln=True)
+    if anomalies > 3000:
+        pdf.cell(200, 10, txt="Extremely high anomalies detected! Immediate investigation required.", ln=True)
+    elif anomalies > 1000:
+        pdf.cell(200, 10, txt="High anomalies detected. Review data, model thresholds, and feature importances.", ln=True)
+    elif anomalies > 500:
+        pdf.cell(200, 10, txt="Moderate anomalies detected. Review data and model thresholds.", ln=True)
+    else:
+        pdf.cell(200, 10, txt="Anomaly detection is within normal range.", ln=True)
+
+    # 🟢 Embed Feature Importance Bar Chart in PDF
+    importance_df.plot(kind='bar', x='Feature', y='Importance', legend=False, title='Feature Importances')
+    plt.tight_layout()
+    plt.savefig('/content/feature_importance_chart.png')
+    pdf.image('/content/feature_importance_chart.png', x=10, y=100, w=190)
+
+    # Save PDF
+    pdf.output("/content/Healthcare_IoT_Report_Enhanced.pdf")
+    st.download_button(label="📥 Download Enhanced PDF Report", data=open("/content/Healthcare_IoT_Report_Enhanced.pdf", "rb"), file_name="Healthcare_IoT_Report_Enhanced.pdf")
+
 
     # Feature importances
     pdf.cell(200, 10, txt="Feature Importances:", ln=True)
