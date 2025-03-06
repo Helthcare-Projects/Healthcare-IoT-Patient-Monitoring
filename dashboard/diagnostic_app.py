@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import joblib
@@ -13,31 +12,30 @@ anomalies = 0
 def main():
     global anomalies  # Use global keyword to ensure anomalies is accessible
 
-    st.write("🔍 DEBUG: Starting Streamlit dashboard...")
-
+    st.set_page_config(page_title="Healthcare IoT Patient Monitoring", layout="wide")
+    st.title('🏥 Healthcare IoT Patient Monitoring Dashboard')
+    
     # Load models
     try:
-        lstm_model = tf.keras.models.load_model('/content/drive/MyDrive/Healthcare-Project/Healthcare-IoT-Patient-Monitoring/models/lstm_model.keras')
-        rf_model = joblib.load('/content/drive/MyDrive/Healthcare-Project/Healthcare-IoT-Patient-Monitoring/models/random_forest_model.pkl')
-        st.write("✅ Models loaded successfully.")
+        lstm_model = tf.keras.models.load_model('models/lstm_model.keras')
+        rf_model = joblib.load('models/random_forest_model.pkl')
+        st.success("✅ Models loaded successfully.")
     except Exception as e:
         st.error("❌ Error loading models.")
         st.text(traceback.format_exc())  # Print detailed traceback
 
     # Load data
     try:
-        data = pd.read_csv('/content/drive/MyDrive/Healthcare-Project/Healthcare-IoT-Patient-Monitoring/data/cleaned_data.csv')
-        st.write("✅ Data loaded successfully.")
+        data = pd.read_csv('data/cleaned_data.csv')
+        st.success("✅ Data loaded successfully.")
         st.write("🔍 DEBUG: First few rows of data:")
         st.write(data.head())  # Print first few rows for verification
     except Exception as e:
         st.error("❌ Error loading data.")
         st.text(traceback.format_exc())  # Print detailed traceback
 
-    st.title('Healthcare IoT Patient Monitoring Dashboard')
-
-    # Display live charts
-    st.subheader('Vital Signs Over Time')
+    # 🟢 Display live charts for vital signs
+    st.subheader('📊 Real-Time Vital Signs')
     try:
         st.line_chart(data[['Temperature', 'Heart Rate', 'Pulse', 'BPSYS', 'BPDIA', 'Respiratory Rate', 'Oxygen Saturation', 'PH']])
     except Exception as e:
@@ -45,28 +43,25 @@ def main():
         st.text(traceback.format_exc())  # Print detailed traceback
 
     # 🟢 Anomaly detection using Random Forest
-    st.subheader('Anomaly Detection')
+    st.subheader('🚨 Anomaly Detection')
     try:
-        st.write("🔍 DEBUG: Before predicting anomalies, anomalies =", anomalies)
+        anomalies = 0  # Define locally inside the try block
         preds = rf_model.predict(data[['Temperature', 'Heart Rate', 'Pulse', 'BPSYS', 'BPDIA', 'Respiratory Rate', 'Oxygen Saturation', 'PH']])
-        st.write("🔍 DEBUG: Predictions array:", preds[:5])  # Print first few predictions
         if isinstance(preds, np.ndarray):
-            anomalies = int(sum(preds))  # Safely update anomalies
-            st.write("🔍 DEBUG: After predicting, anomalies =", anomalies)
-        st.write(f'⚠️ Anomalies Detected: 0')
+            anomalies = int(sum(preds))
+        st.metric(label="⚠️ Anomalies Detected", value=anomalies)
+        st.progress(anomalies / len(data) * 100)
     except Exception as e:
         st.error("❌ Error during anomaly detection.")
         st.text(traceback.format_exc())  # Print detailed traceback
-        st.write('⚠️ Anomalies Detected: 0')  # Fallback if error occurs
 
     # 🟢 Live predictions with LSTM
-    st.subheader('Live Predictions (LSTM)')
+    st.subheader('🔮 LSTM Predictions for Health Deterioration')
     try:
         lstm_input = data[['Temperature', 'Heart Rate', 'Pulse', 'BPSYS', 'BPDIA', 'Respiratory Rate', 'Oxygen Saturation', 'PH']].values.reshape(-1, 1, 8)
         lstm_preds = lstm_model.predict(lstm_input)
         if isinstance(lstm_preds, np.ndarray):
-            st.write("🔍 DEBUG: LSTM Predictions sample:", lstm_preds[:5])
-            st.write('LSTM Predictions:', lstm_preds[:5])
+            st.line_chart(lstm_preds[:50])  # Show first 50 predictions
         else:
             st.write("No valid predictions from LSTM model.")
     except Exception as e:
