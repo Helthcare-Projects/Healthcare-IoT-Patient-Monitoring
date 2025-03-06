@@ -43,21 +43,29 @@ def main():
         st.text(traceback.format_exc())
         return
 
-    # 🟢 PDF Report Generation Function
-    def generate_pdf_report():
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=12)
+    # 🟢 Load enhanced dataset with new features
+    data = pd.read_csv('/content/drive/MyDrive/Healthcare-Project/Healthcare-IoT-Patient-Monitoring/data/enhanced_data.csv')
+    st.success("✅ Enhanced dataset loaded successfully!")
+    st.write(data.head())
 
-        pdf.cell(200, 10, txt="Healthcare IoT Patient Monitoring Report", ln=True, align='C')
-        pdf.ln(10)
-        pdf.cell(200, 10, txt="Key Insights and Alerts", ln=True)
-        pdf.cell(200, 10, txt="- Predicted High Risk: Immediate attention required!", ln=True)
-        pdf.cell(200, 10, txt="- Moderate Risk: Monitor closely.", ln=True)
-        pdf.cell(200, 10, txt="- Low Risk: Stable condition.", ln=True)
+    # 🟢 Add Patient Selection Filter
+    patient_id = st.selectbox('Select Patient ID', data['Patient ID'].unique())
+    selected_patient_data = data[data['Patient ID'] == patient_id]
+    st.write("### Selected Patient Data:")
+    st.write(selected_patient_data)
 
-        # Save and download PDF
-        pdf_path = '/content/Healthcare_IoT_Enhanced_Report.pdf'
-        pdf.output(pdf_path)
-        st.download_button(label="📥 Download PDF Report", data=open(pdf_path, "rb"), file_name="Healthcare_IoT_Enhanced_Report.pdf")
+    # 🟢 Show Detailed Vitals for Selected Patient
+    st.line_chart(selected_patient_data[['Heart Rate', 'BPSYS', 'BPDIA', 'Oxygen Saturation', 'Temperature']])
 
+    # 🟢 Predict Health Risk for Selected Patient
+    if st.button('🔮 Predict Health Risk for Selected Patient'):
+        vitals = selected_patient_data[['Temperature', 'Heart Rate', 'BPSYS', 'BPDIA', 'Respiratory Rate', 'Oxygen Saturation']].values.reshape(1, -1, 6)
+        risk_prediction = lstm_model.predict(vitals)
+        risk_score = round(risk_prediction[0][0] * 100, 2)
+        st.metric(label='Predicted Health Risk (%)', value=f"{risk_score}%")
+        if risk_score > 75:
+            st.error('🚨 High risk detected! Immediate attention required.')
+        elif risk_score > 50:
+            st.warning('⚠ Moderate risk detected. Monitor closely.')
+        else:
+            st.success('✅ Low risk detected.')
