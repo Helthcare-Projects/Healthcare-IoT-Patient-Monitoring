@@ -19,19 +19,18 @@ def main():
     st.title('🏥 Healthcare IoT Patient Monitoring Dashboard')
     
     # Load models
-    try:
-        lstm_model = tf.keras.models.load_model('models/lstm_model.keras')
-        rf_model = joblib.load('models/random_forest_model.pkl')
-        st.success("✅ Models loaded successfully.")
-    except ModuleNotFoundError as e:
-        st.error("❌ Required module is missing: {}".format(str(e)))
-        st.write("Please update requirements.txt to include missing modules.")
-        st.text(traceback.format_exc())  # Print detailed traceback
-        return
-    except Exception as e:
-        st.error("❌ Error loading models.")
-        st.text(traceback.format_exc())  # Print detailed traceback
-        return
+try:
+    # 🟢 Try loading .h5 model instead of .keras
+    lstm_model = tf.keras.models.load_model('models/lstm_model.h5')
+    rf_model = joblib.load('models/random_forest_model.pkl')
+    st.success("✅ Models loaded successfully.")
+except FileNotFoundError as e:
+    st.error(f"❌ Model file not found: {str(e)}")
+    st.write("Please ensure the model files are correctly uploaded.")
+except Exception as e:
+    st.error("❌ Error loading models.")
+    st.text(traceback.format_exc())  # Print detailed traceback
+
 
     # Load data
     try:
