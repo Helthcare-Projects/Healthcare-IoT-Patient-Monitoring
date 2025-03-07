@@ -47,17 +47,19 @@ def main():
     try:
         data = pd.read_csv('data/enhanced_data_realistic.csv')
         st.success("✅ Data loaded successfully.")
-        st.write("📋 Available Columns in Dataset:")
-        st.write(data.columns)
     except Exception as e:
         st.error("❌ Error loading data.")
         st.text(traceback.format_exc())
         return
 
+    # 🟢 Display available columns
+    st.subheader('📋 Available Columns in Dataset:')
+    st.write(data.columns.tolist())
+
     # Check if 'Patient_ID' column exists
     if 'Patient_ID' not in data.columns:
         st.error("❌ 'Patient_ID' column not found in the dataset.")
-        st.stop()
+        return
 
     # 🟢 Patient Selection
     patient_ids = data['Patient_ID'].unique()
@@ -79,61 +81,55 @@ def main():
     with col3:
         st.metric(label="Device Connectivity", value=patient_data['Device_Connectivity'].values[0])
 
-    # 🟢 Tabs for better UI
-    tab1, tab2, tab3, tab4 = st.tabs(["Feature Importance", "Anomaly Detection", "Predictive Analysis", "Vital Signs"])
-
     # 🟢 Feature Importance Visualization
-    with tab1:
-        st.subheader("🔍 Feature Importance for Risk Prediction")
-        try:
-            xgb_importance = xgb_model.get_booster().get_score(importance_type='weight')
-            importance_df = pd.DataFrame({
-                'Feature': list(xgb_importance.keys()),
-                'Importance': list(xgb_importance.values())
-            }).sort_values(by='Importance', ascending=False)
-            st.bar_chart(importance_df.set_index('Feature'))
-        except Exception as e:
-            st.error("❌ Error displaying feature importance.")
-            st.text(traceback.format_exc())
+    st.subheader("🔍 Feature Importance for Risk Prediction")
+    try:
+        xgb_importance = xgb_model.get_booster().get_score(importance_type='weight')
+        importance_df = pd.DataFrame({
+            'Feature': list(xgb_importance.keys()),
+            'Importance': list(xgb_importance.values())
+        }).sort_values(by='Importance', ascending=False)
+        st.bar_chart(importance_df.set_index('Feature'))
+    except Exception as e:
+        st.error("❌ Error displaying feature importance.")
+        st.text(traceback.format_exc())
 
     # 🟢 Anomaly Detection
-    with tab2:
-        st.subheader('🚨 Anomaly Detection')
-        try:
-            preds_proba = rf_model.predict_proba(scaled_features)[:, 1]
-            preds = (preds_proba > 0.95).astype(int)
-            anomalies = int(sum(preds))
-            cumulative_anomalies += anomalies
-            st.metric(label="Anomalies Detected", value=anomalies)
-            st.metric(label="Cumulative Anomalies", value=cumulative_anomalies)
+    st.subheader('🚨 Anomaly Detection')
+    try:
+        preds_proba = rf_model.predict_proba(scaled_features)[:, 1]
+        preds = (preds_proba > 0.95).astype(int)
+        anomalies = int(sum(preds))
+        cumulative_anomalies += anomalies
+        st.metric(label="Anomalies Detected", value=anomalies)
+        st.metric(label="Cumulative Anomalies", value=cumulative_anomalies)
 
-            # 🟢 Anomaly Explanation
-            for i, pred in enumerate(preds):
-                if pred:
-                    st.warning(f"⚠ Anomaly detected at row {i + 1} due to {features.columns[np.argmax(scaled_features[i])]}")
+        # 🟢 Anomaly Explanation
+        for i, pred in enumerate(preds):
+            if pred:
+                st.warning(f"⚠ Anomaly detected at row {i + 1} due to {features.columns[np.argmax(scaled_features[i])]}")
 
-        except Exception as e:
-            st.error("❌ Error during anomaly detection.")
-            st.text(traceback.format_exc())
+    except Exception as e:
+        st.error("❌ Error during anomaly detection.")
+        st.text(traceback.format_exc())
 
     # 🟢 Predictive Alerts and Recommendations
-    with tab3:
-        st.subheader('🔮 Predictive Analysis and Recommendations')
-        try:
-            risk_prediction = xgb_model.predict(scaled_features)
-            confidence = np.max(xgb_model.predict_proba(scaled_features)) * 100
-            st.metric(label="Risk Prediction", value=risk_prediction[0])
-            st.metric(label="Confidence Score", value=f"{confidence:.2f}%")
-        except Exception as e:
-            st.error("❌ Error during predictive analysis.")
-            st.text(traceback.format_exc())
+    st.subheader('🔮 Predictive Analysis and Recommendations')
+    try:
+        risk_prediction = xgb_model.predict(scaled_features)
+        confidence = np.max(xgb_model.predict_proba(scaled_features)) * 100
+        st.metric(label="Risk Prediction", value=risk_prediction[0])
+        st.metric(label="Confidence Score", value=f"{confidence:.2f}%")
+    except Exception as e:
+        st.error("❌ Error during predictive analysis.")
+        st.text(traceback.format_exc())
 
     # 🟢 Real-Time Dynamic Graphs
-    with tab4:
-        st.subheader('📈 Real-Time Vital Signs')
-        vitals = ['Heart Rate', 'BPSYS', 'BPDIA', 'Oxygen Saturation', 'Temperature']
-        for vital in vitals:
-            st.line_chart(patient_data[[vital]])
+    st.subheader('📈 Real-Time Vital Signs')
+    vitals = ['Heart Rate', 'BPSYS', 'BPDIA', 'Oxygen Saturation', 'Temperature']
+    for vital in vitals:
+        if vital in data.columns:
+            st.line_chart(data[[vital]])
 
     # 🟢 Generate Enhanced PDF Report
     if st.button('📄 Generate PDF Report'):
