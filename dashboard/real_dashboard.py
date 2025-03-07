@@ -15,7 +15,7 @@ st.set_page_config(page_title="Healthcare IoT Real-Time Dashboard", layout="wide
 
 # 🟢 Define paths dynamically
 MODEL_PATH = 'models/'
-LSTM_MODEL_PATH = os.path.join(MODEL_PATH, 'lstm_model_enhanced.h5')
+LSTM_MODEL_PATH = os.path.join(MODEL_PATH, 'lstm_model_enhanced.keras')
 RF_MODEL_PATH = os.path.join(MODEL_PATH, 'random_forest_model_enhanced.pkl')
 XGB_MODEL_PATH = os.path.join(MODEL_PATH, 'xgboost_model_enhanced.pkl')
 SCALER_PATH = os.path.join(MODEL_PATH, 'scaler_enhanced.pkl')
@@ -37,7 +37,7 @@ def main():
             st.error("❌ Required model files are missing.")
             return
 
-        lstm_model = tf.keras.models.load_model(LSTM_MODEL_PATH, custom_objects={'mse': tf.keras.losses.MeanSquaredError()})
+        lstm_model = tf.keras.models.load_model(LSTM_MODEL_PATH)
         rf_model = joblib.load(RF_MODEL_PATH)
         xgb_model = joblib.load(XGB_MODEL_PATH)
         scaler = joblib.load(SCALER_PATH)
@@ -45,7 +45,8 @@ def main():
         if os.path.exists(SCALER_COLUMNS_PATH):
             scaler_columns = joblib.load(SCALER_COLUMNS_PATH)
         else:
-            scaler_columns = None  # Handle if scaler_columns.pkl is not available
+            st.warning("⚠️ scaler_columns.pkl not found. Using all available columns.")
+            scaler_columns = None
 
         st.success("✅ Models loaded successfully.")
     except Exception as e:
@@ -79,6 +80,8 @@ def main():
 
     # 🟢 Normalize and Scale Data
     features = patient_data.drop(['Patient_ID', 'Risk_Level'], axis=1)
+    if scaler_columns:
+        features = features[scaler_columns]  # Align columns if scaler_columns is available
     scaled_features = scaler.transform(features)
 
     # 🟢 Real-Time Summary Panel
