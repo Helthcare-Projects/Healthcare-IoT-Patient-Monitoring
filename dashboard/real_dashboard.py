@@ -39,13 +39,16 @@ def main():
         scaler = joblib.load('models/scaler_enhanced.pkl')
         st.success("✅ Models loaded successfully.")
     except Exception as e:
-        st.error("❌ Error loading models.")
+        st.error("❌ Required model files are missing.")
         st.text(traceback.format_exc())
         return
 
     # Load data
     try:
         data = pd.read_csv('data/enhanced_data_realistic_with_id.csv')
+        if 'Patient_ID' not in data.columns:
+            st.error("❌ 'Patient_ID' column not found in the dataset.")
+            return
         st.success("✅ Data loaded successfully.")
     except Exception as e:
         st.error("❌ Error loading data.")
@@ -60,7 +63,12 @@ def main():
 
     # 🟢 Normalize and Scale Data
     features = patient_data.drop(['Patient_ID', 'Risk_Level'], axis=1)
-    scaled_features = scaler.transform(features)
+    try:
+        scaled_features = scaler.transform(features)
+    except Exception as e:
+        st.error("❌ Error during data scaling.")
+        st.text(traceback.format_exc())
+        return
 
     # 🟢 Real-Time Summary Panel
     st.subheader('📊 Real-Time Summary Panel')
@@ -119,7 +127,10 @@ def main():
     st.subheader('📈 Real-Time Vital Signs')
     vitals = ['Heart Rate', 'BPSYS', 'BPDIA', 'Oxygen Saturation', 'Temperature']
     for vital in vitals:
-        st.line_chart(patient_data[[vital]])
+        if vital in patient_data.columns:
+            st.line_chart(patient_data[[vital]])
+        else:
+            st.warning(f"⚠ Vital sign '{vital}' not found in the dataset.")
 
     # 🟢 Generate Enhanced PDF Report
     if st.button('📄 Generate PDF Report'):
