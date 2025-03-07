@@ -1,4 +1,8 @@
+# Install missing libraries if not already installed
 import os
+os.system('pip install matplotlib fpdf xgboost streamlit')
+
+# Import necessary libraries
 import streamlit as st
 import joblib
 import tensorflow as tf
@@ -13,14 +17,6 @@ import xgboost as xgb
 # 🟢 Set page config
 st.set_page_config(page_title="Healthcare IoT Real-Time Dashboard", layout="wide")
 
-# 🟢 Define paths dynamically
-MODEL_PATH = 'models/'
-LSTM_MODEL_PATH = os.path.join(MODEL_PATH, 'lstm_model_enhanced.keras')
-RF_MODEL_PATH = os.path.join(MODEL_PATH, 'random_forest_model_enhanced.pkl')
-XGB_MODEL_PATH = os.path.join(MODEL_PATH, 'xgboost_model_enhanced.pkl')
-SCALER_PATH = os.path.join(MODEL_PATH, 'scaler_enhanced.pkl')
-SCALER_COLUMNS_PATH = os.path.join(MODEL_PATH, 'scaler_columns.pkl')
-
 # 🟢 Initialize global variables
 anomalies = 0
 cumulative_anomalies = 0
@@ -29,28 +25,21 @@ cumulative_anomalies = 0
 def main():
     global anomalies, cumulative_anomalies
 
+    # Page title
     st.title('🏥 Healthcare IoT Real-Time Dashboard')
 
     # Load models
     try:
-        if not os.path.exists(LSTM_MODEL_PATH) or not os.path.exists(RF_MODEL_PATH) or not os.path.exists(XGB_MODEL_PATH):
-            st.error("❌ Required model files are missing.")
-            return
-
-        lstm_model = tf.keras.models.load_model(LSTM_MODEL_PATH)
-        rf_model = joblib.load(RF_MODEL_PATH)
-        xgb_model = joblib.load(XGB_MODEL_PATH)
-        scaler = joblib.load(SCALER_PATH)
-        
-        if os.path.exists(SCALER_COLUMNS_PATH):
-            scaler_columns = joblib.load(SCALER_COLUMNS_PATH)
-        else:
-            st.warning("⚠️ scaler_columns.pkl not found. Using all available columns.")
-            scaler_columns = None
-
+        lstm_model = tf.keras.models.load_model(
+            'models/lstm_model_enhanced.h5',
+            custom_objects={'mse': tf.keras.losses.MeanSquaredError()}
+        )
+        rf_model = joblib.load('models/random_forest_model_enhanced.pkl')
+        xgb_model = joblib.load('models/xgboost_model_enhanced.pkl')
+        scaler = joblib.load('models/scaler_enhanced.pkl')
         st.success("✅ Models loaded successfully.")
     except Exception as e:
-        st.error("❌ Error loading models.")
+        st.error("❌ Required model files are missing.")
         st.text(traceback.format_exc())
         return
 
@@ -58,30 +47,29 @@ def main():
     try:
         data = pd.read_csv('data/enhanced_data_realistic.csv')
         st.success("✅ Data loaded successfully.")
-    except FileNotFoundError:
-        st.error("❌ Data file not found.")
-        return
     except Exception as e:
         st.error("❌ Error loading data.")
         st.text(traceback.format_exc())
         return
 
-    # 🟢 Validate if 'Patient_ID' column exists
+    # 🟢 Check if 'Patient_ID' column exists
     if 'Patient_ID' not in data.columns:
         st.error("❌ 'Patient_ID' column not found.")
-        st.write("Columns available:", list(data.columns))
-        return
+        st.warning("⚠ Using 'Time_Stamp' as a unique identifier instead.")
+        if 'Time_Stamp' in data.columns:
+            data['Patient_ID'] = data['Time_Stamp']
+        else:
+            st.error("❌ Neither 'Patient_ID' nor 'Time_Stamp' found. Cannot proceed.")
+            return
 
     # 🟢 Patient Selection
     patient_ids = data['Patient_ID'].unique()
-    selected_patient = st.selectbox("Select Patient ID:", patient_ids)
+    selected_patient = st.selectbox("Select Patient:", patient_ids)
     patient_data = data[data['Patient_ID'] == selected_patient]
     st.write(f"🔍 Viewing data for Patient ID: {selected_patient}")
 
     # 🟢 Normalize and Scale Data
-    features = patient_data.drop(['Patient_ID', 'Risk_Level'], axis=1)
-    if scaler_columns:
-        features = features[scaler_columns]  # Align columns if scaler_columns is available
+    features = patient_data.drop(['Patient_ID', 'Risk_Level'], axis=1, errors='ignore')
     scaled_features = scaler.transform(features)
 
     # 🟢 Real-Time Summary Panel
