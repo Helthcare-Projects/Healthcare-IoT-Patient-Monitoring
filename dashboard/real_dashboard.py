@@ -45,7 +45,7 @@ def main():
 
     # Load data
     try:
-        file_path = '/content/drive/MyDrive/Healthcare-Project/Healthcare-IoT-Patient-Monitoring/data/enhanced_data_realistic_with_id.csv'
+        file_path = 'data/enhanced_data_realistic_with_id.csv'
         data = pd.read_csv(file_path)
         st.success("✅ Data loaded successfully.")
     except Exception as e:
