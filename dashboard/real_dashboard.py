@@ -1,6 +1,6 @@
 # Install missing libraries if not already installed
 import os
-os.system('pip install streamlit matplotlib fpdf xgboost joblib tensorflow pandas numpy')
+os.system('pip install matplotlib fpdf xgboost streamlit')
 
 # Import necessary libraries
 import streamlit as st
@@ -46,17 +46,16 @@ def main():
     # Load data
     try:
         data = pd.read_csv('data/enhanced_data_realistic.csv')
-        data['Time_Stamp'] = pd.to_datetime(data['Time_Stamp'])
         st.success("✅ Data loaded successfully.")
     except Exception as e:
         st.error("❌ Error loading data.")
         st.text(traceback.format_exc())
         return
 
-    # 🟢 Check for Patient_ID column
+    # Check if 'Patient_ID' column exists
     if 'Patient_ID' not in data.columns:
-        st.error("❌ 'Patient_ID' column not found. Using index as fallback.")
-        data['Patient_ID'] = data.index + 1  # Fallback to index as Patient ID
+        st.warning("❌ 'Patient_ID' column not found. Using index as fallback.")
+        data['Patient_ID'] = data.index + 1  # Create a fallback patient ID
 
     # 🟢 Patient Selection
     patient_ids = data['Patient_ID'].unique()
@@ -65,8 +64,16 @@ def main():
     st.write(f"🔍 Viewing data for Patient ID: {selected_patient}")
 
     # 🟢 Normalize and Scale Data
-    features = patient_data.drop(['Patient_ID', 'Risk_Level', 'Time_Stamp'], axis=1)
-    scaled_features = scaler.transform(features)
+    try:
+        features = patient_data.drop(['Patient_ID', 'Risk_Level', 'Time_Stamp'], axis=1, errors='ignore')
+        # Align column order to match the scaler
+        scaler_columns = joblib.load('models/scaler_columns.pkl')
+        features = features[scaler_columns]
+        scaled_features = scaler.transform(features)
+    except Exception as e:
+        st.error("❌ Error scaling data. Check column names and types.")
+        st.text(traceback.format_exc())
+        return
 
     # 🟢 Real-Time Summary Panel
     st.subheader('📊 Real-Time Summary Panel')
@@ -104,7 +111,7 @@ def main():
         # 🟢 Anomaly Explanation
         for i, pred in enumerate(preds):
             if pred:
-                st.warning(f"⚠ Anomaly detected at row {i + 1} due to {features.columns[np.argmax(scaled_features[i])]}")
+                st.warning(f"⚠ Anomaly detected due to {features.columns[np.argmax(scaled_features[i])]}")
 
     except Exception as e:
         st.error("❌ Error during anomaly detection.")
@@ -125,7 +132,8 @@ def main():
     st.subheader('📈 Real-Time Vital Signs')
     vitals = ['Heart Rate', 'BPSYS', 'BPDIA', 'Oxygen Saturation', 'Temperature']
     for vital in vitals:
-        st.line_chart(patient_data[[vital]])
+        if vital in patient_data.columns:
+            st.line_chart(patient_data[[vital]])
 
     # 🟢 Generate Enhanced PDF Report
     if st.button('📄 Generate PDF Report'):
