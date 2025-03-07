@@ -1,6 +1,6 @@
 # Install missing libraries if not already installed
 import os
-os.system('pip install matplotlib fpdf xgboost streamlit')
+os.system('pip install matplotlib fpdf xgboost')
 
 # Import necessary libraries
 import streamlit as st
@@ -37,7 +37,11 @@ def main():
         rf_model = joblib.load('models/random_forest_model_enhanced.pkl')
         xgb_model = joblib.load('models/xgboost_model_enhanced.pkl')
         scaler = joblib.load('models/scaler_enhanced.pkl')
+        scaler_columns = joblib.load('models/scaler_columns.pkl')
         st.success("✅ Models loaded successfully.")
+    except FileNotFoundError:
+        st.error("❌ Required model files are missing.")
+        return
     except Exception as e:
         st.error("❌ Error loading models.")
         st.text(traceback.format_exc())
@@ -46,16 +50,13 @@ def main():
     # Load data
     try:
         data = pd.read_csv('data/enhanced_data_realistic.csv')
+        if 'Patient_ID' not in data.columns:
+            data['Patient_ID'] = data.index + 1  # Create Patient_ID using index if missing
         st.success("✅ Data loaded successfully.")
     except Exception as e:
         st.error("❌ Error loading data.")
         st.text(traceback.format_exc())
         return
-
-    # Check if 'Patient_ID' column exists
-    if 'Patient_ID' not in data.columns:
-        st.warning("❌ 'Patient_ID' column not found. Using index as fallback.")
-        data['Patient_ID'] = data.index + 1  # Create a fallback patient ID
 
     # 🟢 Patient Selection
     patient_ids = data['Patient_ID'].unique()
@@ -65,11 +66,8 @@ def main():
 
     # 🟢 Normalize and Scale Data
     try:
-        features = patient_data.drop(['Patient_ID', 'Risk_Level', 'Time_Stamp'], axis=1, errors='ignore')
-        # Align column order to match the scaler
-        scaler_columns = joblib.load('models/scaler_columns.pkl')
-        features = features[scaler_columns]
-        scaled_features = scaler.transform(features)
+        features = patient_data.drop(['Patient_ID', 'Risk_Level'], axis=1)
+        scaled_features = pd.DataFrame(scaler.transform(features), columns=scaler_columns)
     except Exception as e:
         st.error("❌ Error scaling data. Check column names and types.")
         st.text(traceback.format_exc())
@@ -107,12 +105,6 @@ def main():
         cumulative_anomalies += anomalies
         st.metric(label="Anomalies Detected", value=anomalies)
         st.metric(label="Cumulative Anomalies", value=cumulative_anomalies)
-
-        # 🟢 Anomaly Explanation
-        for i, pred in enumerate(preds):
-            if pred:
-                st.warning(f"⚠ Anomaly detected due to {features.columns[np.argmax(scaled_features[i])]}")
-
     except Exception as e:
         st.error("❌ Error during anomaly detection.")
         st.text(traceback.format_exc())
@@ -132,34 +124,7 @@ def main():
     st.subheader('📈 Real-Time Vital Signs')
     vitals = ['Heart Rate', 'BPSYS', 'BPDIA', 'Oxygen Saturation', 'Temperature']
     for vital in vitals:
-        if vital in patient_data.columns:
-            st.line_chart(patient_data[[vital]])
-
-    # 🟢 Generate Enhanced PDF Report
-    if st.button('📄 Generate PDF Report'):
-        generate_pdf_report(importance_df, anomalies, cumulative_anomalies, risk_prediction[0], confidence)
-        st.success("✅ PDF Report generated successfully!")
-
-# 🟢 PDF Report Generation Function
-def generate_pdf_report(importance_df, anomalies, cumulative_anomalies, risk_prediction, confidence):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-    pdf.cell(200, 10, txt="Healthcare IoT Monitoring Report", ln=True, align='C')
-
-    pdf.ln(10)
-    pdf.cell(200, 10, txt=f"Total Anomalies: {anomalies}", ln=True)
-    pdf.cell(200, 10, txt=f"Cumulative Anomalies: {cumulative_anomalies}", ln=True)
-    pdf.cell(200, 10, txt=f"Risk Prediction: {risk_prediction}", ln=True)
-    pdf.cell(200, 10, txt=f"Confidence Score: {confidence:.2f}%", ln=True)
-
-    pdf.ln(10)
-    pdf.cell(200, 10, txt="Feature Importances:", ln=True)
-    for index, row in importance_df.iterrows():
-        pdf.cell(200, 10, txt=f"{row['Feature']}: {row['Importance']:.2f}", ln=True)
-
-    pdf.output('/content/Healthcare_IoT_Report_Enhanced.pdf')
-    st.download_button(label="📥 Download PDF Report", data=open('/content/Healthcare_IoT_Report_Enhanced.pdf', 'rb'), file_name="Healthcare_IoT_Report_Enhanced.pdf")
+        st.line_chart(patient_data[[vital]])
 
 # 🟢 Run main function
 if __name__ == "__main__":
