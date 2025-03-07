@@ -52,20 +52,14 @@ def main():
         st.text(traceback.format_exc())
         return
 
-    # 🟢 Display available columns
-    st.subheader('📋 Available Columns in Dataset:')
-    st.write(data.columns.tolist())
-
-    # Check if 'Patient_ID' column exists
-    if 'Patient_ID' not in data.columns:
-        st.error("❌ 'Patient_ID' column not found in the dataset.")
-        return
-
     # 🟢 Patient Selection
-    patient_ids = data['Patient_ID'].unique()
-    selected_patient = st.selectbox("Select Patient ID:", patient_ids)
-    patient_data = data[data['Patient_ID'] == selected_patient]
-    st.write(f"🔍 Viewing data for Patient ID: {selected_patient}")
+    if 'Patient_ID' in data.columns:
+        patient_ids = data['Patient_ID'].unique()
+        selected_patient = st.selectbox("Select Patient ID:", patient_ids)
+        patient_data = data[data['Patient_ID'] == selected_patient]
+    else:
+        st.error("❌ 'Patient_ID' column not found.")
+        return
 
     # 🟢 Normalize and Scale Data
     features = patient_data.drop(['Patient_ID', 'Risk_Level'], axis=1)
@@ -128,8 +122,7 @@ def main():
     st.subheader('📈 Real-Time Vital Signs')
     vitals = ['Heart Rate', 'BPSYS', 'BPDIA', 'Oxygen Saturation', 'Temperature']
     for vital in vitals:
-        if vital in data.columns:
-            st.line_chart(data[[vital]])
+        st.line_chart(patient_data[[vital]])
 
     # 🟢 Generate Enhanced PDF Report
     if st.button('📄 Generate PDF Report'):
@@ -148,11 +141,6 @@ def generate_pdf_report(importance_df, anomalies, cumulative_anomalies, risk_pre
     pdf.cell(200, 10, txt=f"Cumulative Anomalies: {cumulative_anomalies}", ln=True)
     pdf.cell(200, 10, txt=f"Risk Prediction: {risk_prediction}", ln=True)
     pdf.cell(200, 10, txt=f"Confidence Score: {confidence:.2f}%", ln=True)
-
-    pdf.ln(10)
-    pdf.cell(200, 10, txt="Feature Importances:", ln=True)
-    for index, row in importance_df.iterrows():
-        pdf.cell(200, 10, txt=f"{row['Feature']}: {row['Importance']:.2f}", ln=True)
 
     pdf.output('/content/Healthcare_IoT_Report_Enhanced.pdf')
     st.download_button(label="📥 Download PDF Report", data=open('/content/Healthcare_IoT_Report_Enhanced.pdf', 'rb'), file_name="Healthcare_IoT_Report_Enhanced.pdf")
