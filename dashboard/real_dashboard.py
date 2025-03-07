@@ -39,14 +39,13 @@ def main():
         scaler = joblib.load('models/scaler_enhanced.pkl')
         st.success("✅ Models loaded successfully.")
     except Exception as e:
-        st.error("❌ Required model files are missing.")
+        st.error("❌ Error loading models.")
         st.text(traceback.format_exc())
         return
 
     # Load data
     try:
-        file_path = 'data/enhanced_data_realistic_with_id.csv'
-        data = pd.read_csv(file_path)
+        data = pd.read_csv('data/enhanced_data_realistic_with_id.csv')
         st.success("✅ Data loaded successfully.")
     except Exception as e:
         st.error("❌ Error loading data.")
@@ -54,10 +53,6 @@ def main():
         return
 
     # 🟢 Patient Selection
-    if 'Patient_ID' not in data.columns:
-        st.error("❌ 'Patient_ID' column not found in the dataset.")
-        return
-
     patient_ids = data['Patient_ID'].unique()
     selected_patient = st.selectbox("Select Patient ID:", patient_ids)
     patient_data = data[data['Patient_ID'] == selected_patient]
