@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import traceback
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from fpdf import FPDF
 import xgboost as xgb
 
@@ -51,6 +51,19 @@ def main():
         st.success("✅ Data loaded successfully.")
     except Exception as e:
         st.error("❌ Error loading data.")
+        st.text(traceback.format_exc())
+        return
+
+    # 🟢 Encode Categorical Columns Before Scaling
+    try:
+        categorical_columns = data.select_dtypes(include=['object', 'bool']).columns.tolist()
+        le = LabelEncoder()
+        for col in categorical_columns:
+            data[col] = le.fit_transform(data[col])
+        joblib.dump(le, 'models/label_encoder.pkl')  # Save the encoder
+        st.success("✅ Categorical data encoded successfully.")
+    except Exception as e:
+        st.error("❌ Error encoding categorical data.")
         st.text(traceback.format_exc())
         return
 
@@ -147,27 +160,6 @@ def main():
     if st.button('📄 Generate PDF Report'):
         generate_pdf_report(importance_df, anomalies, cumulative_anomalies, risk_prediction[0], confidence)
         st.success("✅ PDF Report generated successfully!")
-
-# 🟢 PDF Report Generation Function
-def generate_pdf_report(importance_df, anomalies, cumulative_anomalies, risk_prediction, confidence):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-    pdf.cell(200, 10, txt="Healthcare IoT Monitoring Report", ln=True, align='C')
-
-    pdf.ln(10)
-    pdf.cell(200, 10, txt=f"Total Anomalies: {anomalies}", ln=True)
-    pdf.cell(200, 10, txt=f"Cumulative Anomalies: {cumulative_anomalies}", ln=True)
-    pdf.cell(200, 10, txt=f"Risk Prediction: {risk_prediction}", ln=True)
-    pdf.cell(200, 10, txt=f"Confidence Score: {confidence:.2f}%", ln=True)
-
-    pdf.ln(10)
-    pdf.cell(200, 10, txt="Feature Importances:", ln=True)
-    for index, row in importance_df.iterrows():
-        pdf.cell(200, 10, txt=f"{row['Feature']}: {row['Importance']:.2f}", ln=True)
-
-    pdf.output('/content/Healthcare_IoT_Report_Enhanced.pdf')
-    st.download_button(label="📥 Download PDF Report", data=open('/content/Healthcare_IoT_Report_Enhanced.pdf', 'rb'), file_name="Healthcare_IoT_Report_Enhanced.pdf")
 
 # 🟢 Run main function
 if __name__ == "__main__":
