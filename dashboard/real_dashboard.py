@@ -1,6 +1,6 @@
 # Install missing libraries if not already installed
 import os
-os.system('pip install matplotlib fpdf xgboost streamlit')
+os.system('pip install matplotlib fpdf xgboost')
 
 # Import necessary libraries
 import streamlit as st
@@ -45,31 +45,26 @@ def main():
 
     # Load data
     try:
-        data = pd.read_csv('data/enhanced_data_realistic.csv')
+        file_path = '/content/drive/MyDrive/Healthcare-Project/Healthcare-IoT-Patient-Monitoring/data/enhanced_data_realistic_with_id.csv'
+        data = pd.read_csv(file_path)
         st.success("✅ Data loaded successfully.")
     except Exception as e:
         st.error("❌ Error loading data.")
         st.text(traceback.format_exc())
         return
 
-    # 🟢 Check if 'Patient_ID' column exists
-    if 'Patient_ID' not in data.columns:
-        st.error("❌ 'Patient_ID' column not found.")
-        st.warning("⚠ Using 'Time_Stamp' as a unique identifier instead.")
-        if 'Time_Stamp' in data.columns:
-            data['Patient_ID'] = data['Time_Stamp']
-        else:
-            st.error("❌ Neither 'Patient_ID' nor 'Time_Stamp' found. Cannot proceed.")
-            return
-
     # 🟢 Patient Selection
+    if 'Patient_ID' not in data.columns:
+        st.error("❌ 'Patient_ID' column not found in the dataset.")
+        return
+
     patient_ids = data['Patient_ID'].unique()
-    selected_patient = st.selectbox("Select Patient:", patient_ids)
+    selected_patient = st.selectbox("Select Patient ID:", patient_ids)
     patient_data = data[data['Patient_ID'] == selected_patient]
     st.write(f"🔍 Viewing data for Patient ID: {selected_patient}")
 
     # 🟢 Normalize and Scale Data
-    features = patient_data.drop(['Patient_ID', 'Risk_Level'], axis=1, errors='ignore')
+    features = patient_data.drop(['Patient_ID', 'Risk_Level'], axis=1)
     scaled_features = scaler.transform(features)
 
     # 🟢 Real-Time Summary Panel
@@ -104,6 +99,12 @@ def main():
         cumulative_anomalies += anomalies
         st.metric(label="Anomalies Detected", value=anomalies)
         st.metric(label="Cumulative Anomalies", value=cumulative_anomalies)
+
+        # 🟢 Anomaly Explanation
+        for i, pred in enumerate(preds):
+            if pred:
+                st.warning(f"⚠ Anomaly detected at row {i + 1} due to {features.columns[np.argmax(scaled_features[i])]}")
+
     except Exception as e:
         st.error("❌ Error during anomaly detection.")
         st.text(traceback.format_exc())
@@ -118,6 +119,38 @@ def main():
     except Exception as e:
         st.error("❌ Error during predictive analysis.")
         st.text(traceback.format_exc())
+
+    # 🟢 Real-Time Dynamic Graphs
+    st.subheader('📈 Real-Time Vital Signs')
+    vitals = ['Heart Rate', 'BPSYS', 'BPDIA', 'Oxygen Saturation', 'Temperature']
+    for vital in vitals:
+        st.line_chart(patient_data[[vital]])
+
+    # 🟢 Generate Enhanced PDF Report
+    if st.button('📄 Generate PDF Report'):
+        generate_pdf_report(importance_df, anomalies, cumulative_anomalies, risk_prediction[0], confidence)
+        st.success("✅ PDF Report generated successfully!")
+
+# 🟢 PDF Report Generation Function
+def generate_pdf_report(importance_df, anomalies, cumulative_anomalies, risk_prediction, confidence):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.cell(200, 10, txt="Healthcare IoT Monitoring Report", ln=True, align='C')
+
+    pdf.ln(10)
+    pdf.cell(200, 10, txt=f"Total Anomalies: {anomalies}", ln=True)
+    pdf.cell(200, 10, txt=f"Cumulative Anomalies: {cumulative_anomalies}", ln=True)
+    pdf.cell(200, 10, txt=f"Risk Prediction: {risk_prediction}", ln=True)
+    pdf.cell(200, 10, txt=f"Confidence Score: {confidence:.2f}%", ln=True)
+
+    pdf.ln(10)
+    pdf.cell(200, 10, txt="Feature Importances:", ln=True)
+    for index, row in importance_df.iterrows():
+        pdf.cell(200, 10, txt=f"{row['Feature']}: {row['Importance']:.2f}", ln=True)
+
+    pdf.output('/content/Healthcare_IoT_Report_Enhanced.pdf')
+    st.download_button(label="📥 Download PDF Report", data=open('/content/Healthcare_IoT_Report_Enhanced.pdf', 'rb'), file_name="Healthcare_IoT_Report_Enhanced.pdf")
 
 # 🟢 Run main function
 if __name__ == "__main__":
