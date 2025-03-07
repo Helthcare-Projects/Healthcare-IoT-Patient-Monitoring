@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import traceback
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import MinMaxScaler, LabelEncoder
+from sklearn.preprocessing import MinMaxScaler
 from fpdf import FPDF
 import xgboost as xgb
 
@@ -36,63 +36,35 @@ def main():
         )
         rf_model = joblib.load('models/random_forest_model_enhanced.pkl')
         xgb_model = joblib.load('models/xgboost_model_enhanced.pkl')
+        scaler = joblib.load('models/scaler_enhanced.pkl')
         st.success("✅ Models loaded successfully.")
     except Exception as e:
-        st.error("❌ Required model files are missing.")
+        st.error("❌ Error loading models.")
         st.text(traceback.format_exc())
         return
 
     # Load data
     try:
         data = pd.read_csv('data/enhanced_data_realistic_with_id.csv')
-        if 'Patient_ID' not in data.columns:
-            st.error("❌ 'Patient_ID' column not found in the dataset.")
-            return
         st.success("✅ Data loaded successfully.")
     except Exception as e:
         st.error("❌ Error loading data.")
         st.text(traceback.format_exc())
         return
 
-    # 🟢 Encode Categorical Columns Before Scaling
-    try:
-        categorical_columns = data.select_dtypes(include=['object', 'bool']).columns.tolist()
-        le = LabelEncoder()
-        for col in categorical_columns:
-            data[col] = le.fit_transform(data[col])
-        joblib.dump(le, 'models/label_encoder.pkl')  # Save the encoder
-        st.success("✅ Categorical data encoded successfully.")
-    except Exception as e:
-        st.error("❌ Error encoding categorical data.")
-        st.text(traceback.format_exc())
-        return
-
-    # 🟢 Refit MinMaxScaler with Updated Features
-    try:
-        scaler = MinMaxScaler()
-        features_to_scale = data.drop(['Patient_ID', 'Risk_Level'], axis=1)
-        scaler.fit(features_to_scale)  # Refit scaler with updated dataset
-        joblib.dump(scaler, 'models/scaler_enhanced_updated.pkl')  # Save updated scaler
-        st.success("✅ Scaler refitted and saved successfully.")
-    except Exception as e:
-        st.error("❌ Error refitting scaler.")
-        st.text(traceback.format_exc())
-        return
-
     # 🟢 Patient Selection
-    patient_ids = data['Patient_ID'].unique()
-    selected_patient = st.selectbox("Select Patient ID:", patient_ids)
-    patient_data = data[data['Patient_ID'] == selected_patient]
-    st.write(f"🔍 Viewing data for Patient ID: {selected_patient}")
-
-    # 🟢 Normalize and Scale Data with Updated Scaler
-    features = patient_data.drop(['Patient_ID', 'Risk_Level'], axis=1)
-    try:
-        scaled_features = scaler.transform(features)
-    except Exception as e:
-        st.error("❌ Error during data scaling.")
-        st.text(traceback.format_exc())
+    if 'Patient_ID' in data.columns:
+        patient_ids = data['Patient_ID'].unique()
+        selected_patient = st.selectbox("Select Patient ID:", patient_ids)
+        patient_data = data[data['Patient_ID'] == selected_patient]
+        st.write(f"🔍 Viewing data for Patient ID: {selected_patient}")
+    else:
+        st.error("❌ 'Patient_ID' column not found in the dataset.")
         return
+
+    # 🟢 Normalize and Scale Data
+    features = patient_data.drop(['Patient_ID', 'Risk_Level'], axis=1)
+    scaled_features = scaler.transform(features)
 
     # 🟢 Real-Time Summary Panel
     st.subheader('📊 Real-Time Summary Panel')
@@ -151,15 +123,33 @@ def main():
     st.subheader('📈 Real-Time Vital Signs')
     vitals = ['Heart Rate', 'BPSYS', 'BPDIA', 'Oxygen Saturation', 'Temperature']
     for vital in vitals:
-        if vital in patient_data.columns:
-            st.line_chart(patient_data[[vital]])
-        else:
-            st.warning(f"⚠ Vital sign '{vital}' not found in the dataset.")
+        st.line_chart(patient_data[[vital]])
 
     # 🟢 Generate Enhanced PDF Report
     if st.button('📄 Generate PDF Report'):
         generate_pdf_report(importance_df, anomalies, cumulative_anomalies, risk_prediction[0], confidence)
         st.success("✅ PDF Report generated successfully!")
+
+# 🟢 PDF Report Generation Function
+def generate_pdf_report(importance_df, anomalies, cumulative_anomalies, risk_prediction, confidence):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.cell(200, 10, txt="Healthcare IoT Monitoring Report", ln=True, align='C')
+
+    pdf.ln(10)
+    pdf.cell(200, 10, txt=f"Total Anomalies: {anomalies}", ln=True)
+    pdf.cell(200, 10, txt=f"Cumulative Anomalies: {cumulative_anomalies}", ln=True)
+    pdf.cell(200, 10, txt=f"Risk Prediction: {risk_prediction}", ln=True)
+    pdf.cell(200, 10, txt=f"Confidence Score: {confidence:.2f}%", ln=True)
+
+    pdf.ln(10)
+    pdf.cell(200, 10, txt="Feature Importances:", ln=True)
+    for index, row in importance_df.iterrows():
+        pdf.cell(200, 10, txt=f"{row['Feature']}: {row['Importance']:.2f}", ln=True)
+
+    pdf.output('/content/Healthcare_IoT_Report_Enhanced.pdf')
+    st.download_button(label="📥 Download PDF Report", data=open('/content/Healthcare_IoT_Report_Enhanced.pdf', 'rb'), file_name="Healthcare_IoT_Report_Enhanced.pdf")
 
 # 🟢 Run main function
 if __name__ == "__main__":
