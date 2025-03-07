@@ -1,6 +1,6 @@
 # Install missing libraries if not already installed
 import os
-os.system('pip install matplotlib fpdf xgboost')
+os.system('pip install streamlit matplotlib fpdf xgboost joblib tensorflow pandas numpy')
 
 # Import necessary libraries
 import streamlit as st
@@ -46,23 +46,26 @@ def main():
     # Load data
     try:
         data = pd.read_csv('data/enhanced_data_realistic.csv')
+        data['Time_Stamp'] = pd.to_datetime(data['Time_Stamp'])
         st.success("✅ Data loaded successfully.")
     except Exception as e:
         st.error("❌ Error loading data.")
         st.text(traceback.format_exc())
         return
 
+    # 🟢 Check for Patient_ID column
+    if 'Patient_ID' not in data.columns:
+        st.error("❌ 'Patient_ID' column not found. Using index as fallback.")
+        data['Patient_ID'] = data.index + 1  # Fallback to index as Patient ID
+
     # 🟢 Patient Selection
-    if 'Patient_ID' in data.columns:
-        patient_ids = data['Patient_ID'].unique()
-        selected_patient = st.selectbox("Select Patient ID:", patient_ids)
-        patient_data = data[data['Patient_ID'] == selected_patient]
-    else:
-        st.error("❌ 'Patient_ID' column not found.")
-        return
+    patient_ids = data['Patient_ID'].unique()
+    selected_patient = st.selectbox("Select Patient ID:", patient_ids)
+    patient_data = data[data['Patient_ID'] == selected_patient]
+    st.write(f"🔍 Viewing data for Patient ID: {selected_patient}")
 
     # 🟢 Normalize and Scale Data
-    features = patient_data.drop(['Patient_ID', 'Risk_Level'], axis=1)
+    features = patient_data.drop(['Patient_ID', 'Risk_Level', 'Time_Stamp'], axis=1)
     scaled_features = scaler.transform(features)
 
     # 🟢 Real-Time Summary Panel
@@ -141,6 +144,11 @@ def generate_pdf_report(importance_df, anomalies, cumulative_anomalies, risk_pre
     pdf.cell(200, 10, txt=f"Cumulative Anomalies: {cumulative_anomalies}", ln=True)
     pdf.cell(200, 10, txt=f"Risk Prediction: {risk_prediction}", ln=True)
     pdf.cell(200, 10, txt=f"Confidence Score: {confidence:.2f}%", ln=True)
+
+    pdf.ln(10)
+    pdf.cell(200, 10, txt="Feature Importances:", ln=True)
+    for index, row in importance_df.iterrows():
+        pdf.cell(200, 10, txt=f"{row['Feature']}: {row['Importance']:.2f}", ln=True)
 
     pdf.output('/content/Healthcare_IoT_Report_Enhanced.pdf')
     st.download_button(label="📥 Download PDF Report", data=open('/content/Healthcare_IoT_Report_Enhanced.pdf', 'rb'), file_name="Healthcare_IoT_Report_Enhanced.pdf")
