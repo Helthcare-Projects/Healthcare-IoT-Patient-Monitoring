@@ -36,7 +36,6 @@ def main():
         )
         rf_model = joblib.load('models/random_forest_model_enhanced.pkl')
         xgb_model = joblib.load('models/xgboost_model_enhanced.pkl')
-        scaler = joblib.load('models/scaler_enhanced.pkl')
         st.success("✅ Models loaded successfully.")
     except Exception as e:
         st.error("❌ Required model files are missing.")
@@ -55,13 +54,25 @@ def main():
         st.text(traceback.format_exc())
         return
 
+    # 🟢 Refit MinMaxScaler with Updated Features
+    try:
+        scaler = MinMaxScaler()
+        features_to_scale = data.drop(['Patient_ID', 'Risk_Level'], axis=1)
+        scaler.fit(features_to_scale)  # Refit scaler with updated dataset
+        joblib.dump(scaler, 'models/scaler_enhanced_updated.pkl')  # Save updated scaler
+        st.success("✅ Scaler refitted and saved successfully.")
+    except Exception as e:
+        st.error("❌ Error refitting scaler.")
+        st.text(traceback.format_exc())
+        return
+
     # 🟢 Patient Selection
     patient_ids = data['Patient_ID'].unique()
     selected_patient = st.selectbox("Select Patient ID:", patient_ids)
     patient_data = data[data['Patient_ID'] == selected_patient]
     st.write(f"🔍 Viewing data for Patient ID: {selected_patient}")
 
-    # 🟢 Normalize and Scale Data
+    # 🟢 Normalize and Scale Data with Updated Scaler
     features = patient_data.drop(['Patient_ID', 'Risk_Level'], axis=1)
     try:
         scaled_features = scaler.transform(features)
