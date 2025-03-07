@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import traceback
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from fpdf import FPDF
 import xgboost as xgb
 
@@ -58,14 +58,31 @@ def main():
     patient_data = data[data['Patient_ID'] == selected_patient]
     st.write(f"🔍 Viewing data for Patient ID: {selected_patient}")
 
+    # 🟢 Encode Categorical Columns
+    try:
+        # Identify and encode categorical columns
+        categorical_columns = patient_data.select_dtypes(include=['object']).columns.tolist()
+        if 'Patient_ID' in categorical_columns:
+            categorical_columns.remove('Patient_ID')  # Exclude Patient_ID from encoding
+        if 'Risk_Level' in categorical_columns:
+            categorical_columns.remove('Risk_Level')  # Exclude Risk_Level for separate handling
+
+        # Encode categorical columns to numeric
+        encoder = LabelEncoder()
+        for col in categorical_columns:
+            patient_data[col] = encoder.fit_transform(patient_data[col])
+        st.success("✅ Categorical columns encoded successfully.")
+    except Exception as e:
+        st.error("❌ Error during encoding categorical columns.")
+        st.text(traceback.format_exc())
+        return
+
     # 🟢 Normalize and Scale Data
     try:
-        # Load feature names used during training
+        # Align columns with scaler's expected features
         expected_features = scaler.feature_names_in_
-
-        # Align current features with the expected features used during training
         features = patient_data.drop(['Patient_ID', 'Risk_Level'], axis=1)
-        features = features[expected_features]  # Ensure column order and count match
+        features = features[expected_features]  # Ensure column order matches
 
         # Scale the aligned features
         scaled_features = scaler.transform(features)
@@ -132,12 +149,6 @@ def main():
         st.error("❌ Error during predictive analysis.")
         st.text(traceback.format_exc())
 
-    # 🟢 Real-Time Dynamic Graphs
-    st.subheader('📈 Real-Time Vital Signs')
-    vitals = ['Heart Rate', 'BPSYS', 'BPDIA', 'Oxygen Saturation', 'Temperature']
-    for vital in vitals:
-        st.line_chart(patient_data[[vital]])
-
     # 🟢 Generate Enhanced PDF Report
     if st.button('📄 Generate PDF Report'):
         generate_pdf_report(importance_df, anomalies, cumulative_anomalies, risk_prediction[0], confidence)
@@ -155,11 +166,6 @@ def generate_pdf_report(importance_df, anomalies, cumulative_anomalies, risk_pre
     pdf.cell(200, 10, txt=f"Cumulative Anomalies: {cumulative_anomalies}", ln=True)
     pdf.cell(200, 10, txt=f"Risk Prediction: {risk_prediction}", ln=True)
     pdf.cell(200, 10, txt=f"Confidence Score: {confidence:.2f}%", ln=True)
-
-    pdf.ln(10)
-    pdf.cell(200, 10, txt="Feature Importances:", ln=True)
-    for index, row in importance_df.iterrows():
-        pdf.cell(200, 10, txt=f"{row['Feature']}: {row['Importance']:.2f}", ln=True)
 
     pdf.output('/content/Healthcare_IoT_Report_Enhanced.pdf')
     st.download_button(label="📥 Download PDF Report", data=open('/content/Healthcare_IoT_Report_Enhanced.pdf', 'rb'), file_name="Healthcare_IoT_Report_Enhanced.pdf")
