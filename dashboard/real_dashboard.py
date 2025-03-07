@@ -53,35 +53,31 @@ def main():
         return
 
     # 🟢 Patient Selection
-    if 'Patient_ID' in data.columns:
-        patient_ids = data['Patient_ID'].unique()
-        selected_patient = st.selectbox("Select Patient ID:", patient_ids)
-        patient_data = data[data['Patient_ID'] == selected_patient]
-        st.write(f"🔍 Viewing data for Patient ID: {selected_patient}")
-    else:
-        st.error("❌ 'Patient_ID' column not found in the dataset.")
+    patient_ids = data['Patient_ID'].unique()
+    selected_patient = st.selectbox("Select Patient ID:", patient_ids)
+    patient_data = data[data['Patient_ID'] == selected_patient]
+    st.write(f"🔍 Viewing data for Patient ID: {selected_patient}")
+
+    # 🟢 Normalize and Scale Data
+    try:
+        # Load feature names used during training
+        expected_features = scaler.feature_names_in_
+
+        # Align current features with the expected features used during training
+        features = patient_data.drop(['Patient_ID', 'Risk_Level'], axis=1)
+        features = features[expected_features]  # Ensure column order and count match
+
+        # Scale the aligned features
+        scaled_features = scaler.transform(features)
+        st.success("✅ Data normalized and scaled successfully.")
+    except KeyError as e:
+        st.error(f"❌ Missing expected columns: {str(e)}")
+        st.text(traceback.format_exc())
         return
-
-# 🟢 Normalize and Scale Data
-try:
-    # Load feature names used during training
-    expected_features = joblib.load('models/scaler_enhanced.pkl').feature_names_in_
-
-    # Align current features with the expected features used during training
-    features = patient_data.drop(['Patient_ID', 'Risk_Level'], axis=1)
-    features = features[expected_features]  # Ensure column order and count match
-
-    # Scale the aligned features
-    scaled_features = scaler.transform(features)
-    st.success("✅ Data normalized and scaled successfully.")
-except KeyError as e:
-    st.error(f"❌ Missing expected columns: {str(e)}")
-    st.text(traceback.format_exc())
-    return
-except Exception as e:
-    st.error("❌ Error during data normalization and scaling.")
-    st.text(traceback.format_exc())
-    return
+    except Exception as e:
+        st.error("❌ Error during data normalization and scaling.")
+        st.text(traceback.format_exc())
+        return
 
     # 🟢 Real-Time Summary Panel
     st.subheader('📊 Real-Time Summary Panel')
