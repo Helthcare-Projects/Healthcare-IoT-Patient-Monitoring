@@ -1,8 +1,4 @@
-# Install missing libraries if not already installed
 import os
-os.system('pip install matplotlib fpdf xgboost')
-
-# Import necessary libraries
 import streamlit as st
 import joblib
 import tensorflow as tf
@@ -17,6 +13,14 @@ import xgboost as xgb
 # 🟢 Set page config
 st.set_page_config(page_title="Healthcare IoT Real-Time Dashboard", layout="wide")
 
+# 🟢 Define paths dynamically
+MODEL_PATH = 'models/'
+LSTM_MODEL_PATH = os.path.join(MODEL_PATH, 'lstm_model_enhanced.h5')
+RF_MODEL_PATH = os.path.join(MODEL_PATH, 'random_forest_model_enhanced.pkl')
+XGB_MODEL_PATH = os.path.join(MODEL_PATH, 'xgboost_model_enhanced.pkl')
+SCALER_PATH = os.path.join(MODEL_PATH, 'scaler_enhanced.pkl')
+SCALER_COLUMNS_PATH = os.path.join(MODEL_PATH, 'scaler_columns.pkl')
+
 # 🟢 Initialize global variables
 anomalies = 0
 cumulative_anomalies = 0
@@ -25,23 +29,25 @@ cumulative_anomalies = 0
 def main():
     global anomalies, cumulative_anomalies
 
-    # Page title
     st.title('🏥 Healthcare IoT Real-Time Dashboard')
 
     # Load models
     try:
-        lstm_model = tf.keras.models.load_model(
-            'models/lstm_model_enhanced.h5',
-            custom_objects={'mse': tf.keras.losses.MeanSquaredError()}
-        )
-        rf_model = joblib.load('models/random_forest_model_enhanced.pkl')
-        xgb_model = joblib.load('models/xgboost_model_enhanced.pkl')
-        scaler = joblib.load('models/scaler_enhanced.pkl')
-        scaler_columns = joblib.load('models/scaler_columns.pkl')
+        if not os.path.exists(LSTM_MODEL_PATH) or not os.path.exists(RF_MODEL_PATH) or not os.path.exists(XGB_MODEL_PATH):
+            st.error("❌ Required model files are missing.")
+            return
+
+        lstm_model = tf.keras.models.load_model(LSTM_MODEL_PATH, custom_objects={'mse': tf.keras.losses.MeanSquaredError()})
+        rf_model = joblib.load(RF_MODEL_PATH)
+        xgb_model = joblib.load(XGB_MODEL_PATH)
+        scaler = joblib.load(SCALER_PATH)
+        
+        if os.path.exists(SCALER_COLUMNS_PATH):
+            scaler_columns = joblib.load(SCALER_COLUMNS_PATH)
+        else:
+            scaler_columns = None  # Handle if scaler_columns.pkl is not available
+
         st.success("✅ Models loaded successfully.")
-    except FileNotFoundError:
-        st.error("❌ Required model files are missing.")
-        return
     except Exception as e:
         st.error("❌ Error loading models.")
         st.text(traceback.format_exc())
@@ -50,12 +56,19 @@ def main():
     # Load data
     try:
         data = pd.read_csv('data/enhanced_data_realistic.csv')
-        if 'Patient_ID' not in data.columns:
-            data['Patient_ID'] = data.index + 1  # Create Patient_ID using index if missing
         st.success("✅ Data loaded successfully.")
+    except FileNotFoundError:
+        st.error("❌ Data file not found.")
+        return
     except Exception as e:
         st.error("❌ Error loading data.")
         st.text(traceback.format_exc())
+        return
+
+    # 🟢 Validate if 'Patient_ID' column exists
+    if 'Patient_ID' not in data.columns:
+        st.error("❌ 'Patient_ID' column not found.")
+        st.write("Columns available:", list(data.columns))
         return
 
     # 🟢 Patient Selection
@@ -65,13 +78,8 @@ def main():
     st.write(f"🔍 Viewing data for Patient ID: {selected_patient}")
 
     # 🟢 Normalize and Scale Data
-    try:
-        features = patient_data.drop(['Patient_ID', 'Risk_Level'], axis=1)
-        scaled_features = pd.DataFrame(scaler.transform(features), columns=scaler_columns)
-    except Exception as e:
-        st.error("❌ Error scaling data. Check column names and types.")
-        st.text(traceback.format_exc())
-        return
+    features = patient_data.drop(['Patient_ID', 'Risk_Level'], axis=1)
+    scaled_features = scaler.transform(features)
 
     # 🟢 Real-Time Summary Panel
     st.subheader('📊 Real-Time Summary Panel')
@@ -119,12 +127,6 @@ def main():
     except Exception as e:
         st.error("❌ Error during predictive analysis.")
         st.text(traceback.format_exc())
-
-    # 🟢 Real-Time Dynamic Graphs
-    st.subheader('📈 Real-Time Vital Signs')
-    vitals = ['Heart Rate', 'BPSYS', 'BPDIA', 'Oxygen Saturation', 'Temperature']
-    for vital in vitals:
-        st.line_chart(patient_data[[vital]])
 
 # 🟢 Run main function
 if __name__ == "__main__":
