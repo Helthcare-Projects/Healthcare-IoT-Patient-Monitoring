@@ -1,12 +1,12 @@
 streamlit==1.24.0
 pandas==1.5.3
 numpy==1.24.3
-scikit-learn==1.2.2
-xgboost==1.7.5
-tensorflow==2.12.0  # Downgraded for compatibility
+tensorflow==2.10.0  # Compatible with Python 3.10
+xgboost==1.7.6
 joblib==1.2.0
-plotly==5.14.1
+scikit-learn==1.2.2
 matplotlib==3.7.1
-fpdf==1.7.2
-setuptools==68.0.0  # Ensures compatibility with distutils
-python_version < 3.12  # Force lower Python version for compatibility
+plotly==5.15.0
+setuptools==65.5.0  # Fix for distutils error
+distlib==0.3.6       # Optional, for additional compatibility
+fpdf==1.7            # For PDF report generation
