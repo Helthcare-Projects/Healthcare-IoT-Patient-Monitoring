@@ -1,6 +1,6 @@
 # Install missing libraries if not already installed
 import os
-os.system('pip install matplotlib fpdf xgboost plotly')
+os.system('pip install matplotlib fpdf xgboost plotly')  # Added plotly to the install command
 
 # Import necessary libraries
 import streamlit as st
@@ -10,11 +10,12 @@ import numpy as np
 import pandas as pd
 import traceback
 import matplotlib.pyplot as plt
-import plotly.express as px
-import plotly.graph_objs as go
+import plotly.express as px  # Ensure plotly is imported successfully
+import plotly.graph_objs as go  # Import plotly graph objects for visualization
 from sklearn.preprocessing import MinMaxScaler
 from fpdf import FPDF
 import xgboost as xgb
+
 
 # 🟢 Set page config
 st.set_page_config(page_title="Healthcare IoT Real-Time Dashboard", layout="wide")
