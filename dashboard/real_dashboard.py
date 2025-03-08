@@ -1,6 +1,6 @@
 # Install missing libraries if not already installed
 import os
-os.system('pip install matplotlib fpdf xgboost')
+os.system('pip install matplotlib fpdf xgboost plotly')
 
 # Import necessary libraries
 import streamlit as st
@@ -10,7 +10,9 @@ import numpy as np
 import pandas as pd
 import traceback
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import MinMaxScaler, LabelEncoder
+import plotly.express as px
+import plotly.graph_objs as go
+from sklearn.preprocessing import MinMaxScaler
 from fpdf import FPDF
 import xgboost as xgb
 
@@ -58,39 +60,13 @@ def main():
     patient_data = data[data['Patient_ID'] == selected_patient]
     st.write(f"🔍 Viewing data for Patient ID: {selected_patient}")
 
-    # 🟢 Encode Categorical Columns
-    try:
-        # Identify and encode categorical columns
-        categorical_columns = patient_data.select_dtypes(include=['object']).columns.tolist()
-        if 'Patient_ID' in categorical_columns:
-            categorical_columns.remove('Patient_ID')  # Exclude Patient_ID from encoding
-        if 'Risk_Level' in categorical_columns:
-            categorical_columns.remove('Risk_Level')  # Exclude Risk_Level for separate handling
-
-        # Encode categorical columns to numeric
-        encoder = LabelEncoder()
-        for col in categorical_columns:
-            patient_data[col] = encoder.fit_transform(patient_data[col])
-        st.success("✅ Categorical columns encoded successfully.")
-    except Exception as e:
-        st.error("❌ Error during encoding categorical columns.")
-        st.text(traceback.format_exc())
-        return
-
     # 🟢 Normalize and Scale Data
     try:
-        # Align columns with scaler's expected features
-        expected_features = scaler.feature_names_in_
         features = patient_data.drop(['Patient_ID', 'Risk_Level'], axis=1)
-        features = features[expected_features]  # Ensure column order matches
-
-        # Scale the aligned features
+        # Align columns for scaler
+        features = features[scaler.feature_names_in_]
         scaled_features = scaler.transform(features)
         st.success("✅ Data normalized and scaled successfully.")
-    except KeyError as e:
-        st.error(f"❌ Missing expected columns: {str(e)}")
-        st.text(traceback.format_exc())
-        return
     except Exception as e:
         st.error("❌ Error during data normalization and scaling.")
         st.text(traceback.format_exc())
@@ -132,7 +108,7 @@ def main():
         # 🟢 Anomaly Explanation
         for i, pred in enumerate(preds):
             if pred:
-                st.warning(f"⚠ Anomaly detected at row {i + 1} due to {features.columns[np.argmax(scaled_features[i])]}")
+                st.warning(f"⚠ Anomaly detected due to {features.columns[np.argmax(scaled_features[i])]}")
 
     except Exception as e:
         st.error("❌ Error during anomaly detection.")
@@ -148,6 +124,12 @@ def main():
     except Exception as e:
         st.error("❌ Error during predictive analysis.")
         st.text(traceback.format_exc())
+
+    # 🟢 Real-Time Dynamic Graphs
+    st.subheader('📈 Real-Time Vital Signs')
+    vitals = ['Heart Rate', 'BPSYS', 'BPDIA', 'Oxygen Saturation', 'Temperature']
+    for vital in vitals:
+        st.line_chart(patient_data[[vital]])
 
     # 🟢 Generate Enhanced PDF Report
     if st.button('📄 Generate PDF Report'):
@@ -166,6 +148,11 @@ def generate_pdf_report(importance_df, anomalies, cumulative_anomalies, risk_pre
     pdf.cell(200, 10, txt=f"Cumulative Anomalies: {cumulative_anomalies}", ln=True)
     pdf.cell(200, 10, txt=f"Risk Prediction: {risk_prediction}", ln=True)
     pdf.cell(200, 10, txt=f"Confidence Score: {confidence:.2f}%", ln=True)
+
+    pdf.ln(10)
+    pdf.cell(200, 10, txt="Feature Importances:", ln=True)
+    for index, row in importance_df.iterrows():
+        pdf.cell(200, 10, txt=f"{row['Feature']}: {row['Importance']:.2f}", ln=True)
 
     pdf.output('/content/Healthcare_IoT_Report_Enhanced.pdf')
     st.download_button(label="📥 Download PDF Report", data=open('/content/Healthcare_IoT_Report_Enhanced.pdf', 'rb'), file_name="Healthcare_IoT_Report_Enhanced.pdf")
